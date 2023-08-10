@@ -1,9 +1,11 @@
 import re
+from datetime import datetime
 from shell import shell
 
 class LibPVE():
     def __init__(self):
         self.vms = []
+        self.snaps = {}
 
     def list(self):
         ls = shell('sudo qm list').output()
@@ -25,10 +27,31 @@ class LibPVE():
                     print(f'line=[{vms}]')
             self.vms = vms
         return vms
-    
+
     def start_vm(self, id):
         res = shell(f'sudo qm start {id}').output()
     def stop_vm(self, id):
         res = shell(f'sudo qm stop {id}').output()
+
+    def list_snapshots(self, id):
+        res = shell(f'sudo qm listsnapshot {id}').output()
+        self.snaps[id] = []
+        for line in res:
+            items = re.split('\s+', line.strip(), maxsplit=4)
+            if len(items)==5 and len(items[2])==10:
+                print(f'xitem: {items}')
+                self.snaps[id].append({
+                    'name': items[1],
+                    'desc': items[4],
+                    'time': datetime.strptime(f'{items[2]} {items[3]}', '%Y-%m-%d %H:%M:%S')
+                    })
+            else:
+                print(f'item: {items}')
+
+    def snapshot(self, id, name, desc='nothing'):
+        res = shell(f'sudo qm snapshot {id} "{name}" -description "{desc}"').output()
+        self.list_snapshots(id)
+        return res
+
 
 

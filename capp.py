@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 import wx
+
+from input_dialog import InputDialog
+
 import libpve
 
 pve = libpve.LibPVE()
@@ -15,21 +18,21 @@ class MyFrame(wx.Frame):
         self.list_ctrl.InsertColumn(1, 'Name')
         self.list_ctrl.InsertColumn(2, 'Size')
         self.list_ctrl.InsertColumn(3, 'Status')
-        self.list_ctrl.InsertColumn(4, 'Operation')
+        self.list_ctrl.InsertColumn(4, 'Snapshots')
 
-        self.start_stop_button = wx.Button(self.panel, label='Start/Stop Item')
+        self.start_stop_button = wx.Button(self.panel, label='Start/Stop')
         self.start_stop_button.Disable()
         self.start_stop_button.Bind(wx.EVT_BUTTON, self.on_start_stop_button_click)
 
-        self.snapshot_button = wx.Button(self.panel, label='Snapshot Item')
+        self.snapshot_button = wx.Button(self.panel, label='Snapshot')
         self.snapshot_button.Disable()
         self.snapshot_button.Bind(wx.EVT_BUTTON, self.on_snapshot_button_click)
 
-        self.clone_button = wx.Button(self.panel, label='Clone Item')
+        self.clone_button = wx.Button(self.panel, label='Clone')
         self.clone_button.Disable()
         self.clone_button.Bind(wx.EVT_BUTTON, self.on_clone_button_click)
 
-        load_button = wx.Button(self.panel, label='Load Data')
+        load_button = wx.Button(self.panel, label='Reload')
         load_button.Bind(wx.EVT_BUTTON, self.on_load_button_click)
 
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -65,7 +68,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.on_exit, exit_item)
         self.Bind(wx.EVT_MENU, self.on_about, about_item)
 
-    def load_data_from_json(self, filename):
+    def list_vms(self):
         data = pve.list()
         self.data = data
         return data
@@ -78,12 +81,17 @@ class MyFrame(wx.Frame):
             self.list_ctrl.SetItem(index, 1, item['name'])
             self.list_ctrl.SetItem(index, 2, f'{item["ram"]}/{item["bootdisk_gb"]}')
             self.list_ctrl.SetItem(index, 3, item['status'])
+            if item['id'] in pve.snaps:
+                cnt = len(pve.snaps[item['id']])
+                self.list_ctrl.SetItem(index, 4, str(cnt)) 
+            else:
+                self.list_ctrl.SetItem(index, 4, '-')
 
         self.main_sizer.Layout()
 
     def on_load_button_click(self, event):
-        data = self.load_data_from_json('data.json')
-        self.update_listview(data)
+        self.list_vms()
+        self.update_listview(pve.vms)
 
     def on_item_selected(self, event):
         selected_index = event.GetIndex()
@@ -121,7 +129,13 @@ class MyFrame(wx.Frame):
         selected_index = self.list_ctrl.GetFirstSelected()
         if selected_index != -1:
             selected_id = self.list_ctrl.GetItemText(selected_index)
-            wx.MessageBox(f"Snapshot clicked for item with ID: {selected_id}", "Snapshot Button Clicked")
+            pve.list_snapshots(selected_id)
+            idg = InputDialog(self, title=f'Create Snapshot for VM {selected_id}', items=pve.snaps[selected_id])
+            if idg.ShowModal() == wx.ID_OK:
+                name, desc = idg.get_input()
+                pve.snapshot(selected_id, name, desc)
+            idg.Destroy()
+            self.on_load_button_click(None)
 
     def on_clone_button_click(self, event):
         selected_index = self.list_ctrl.GetFirstSelected()

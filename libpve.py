@@ -11,7 +11,6 @@ class LibPVE():
         ls = shell('sudo qm list').output()
         if len(ls)>0:
             header = ls.pop(0)
-            print(f'header=[{header}]')
             vms = []
             for line in ls:
                 items = re.split('\s+', line.strip())
@@ -24,7 +23,6 @@ class LibPVE():
                         'bootdisk_gb': int(float(items[4])),
                         'pid': int(items[5])
                         })
-                    print(f'line=[{vms}]')
             self.vms = vms
         return vms
 
@@ -39,14 +37,15 @@ class LibPVE():
         for line in res:
             items = re.split('\s+', line.strip(), maxsplit=4)
             if len(items)==5 and len(items[2])==10:
-                print(f'xitem: {items}')
                 self.snaps[id].append({
                     'name': items[1],
                     'desc': items[4],
                     'time': datetime.strptime(f'{items[2]} {items[3]}', '%Y-%m-%d %H:%M:%S')
                     })
+            elif len(items)==5 and items[1]=='current':
+                continue
             else:
-                print(f'item: {items}')
+                print(f'unknown snapshot item: {items}')
 
     def snapshot(self, id, name, desc='nothing'):
         res = shell(f'sudo qm snapshot {id} "{name}" -description "{desc}"').output()

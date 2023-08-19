@@ -69,13 +69,11 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.on_about, about_item)
 
     def list_vms(self):
-        data = pve.list()
-        self.data = data
-        return data
+        pve.list()
+        self.update_listview(pve.vms)
 
     def update_listview(self, data):
         self.list_ctrl.DeleteAllItems()
-
         for item in data:
             index = self.list_ctrl.InsertItem(self.list_ctrl.GetItemCount(), str(item['id']))
             self.list_ctrl.SetItem(index, 1, item['name'])
@@ -91,12 +89,11 @@ class MyFrame(wx.Frame):
 
     def on_load_button_click(self, event):
         self.list_vms()
-        self.update_listview(pve.vms)
 
     def on_item_selected(self, event):
         selected_index = event.GetIndex()
         if selected_index != -1:
-            item = self.data[selected_index]
+            item = pve.vms[selected_index]
             status = item['status']
             self.start_stop_button.Enable()
             self.clone_button.Enable()
@@ -116,14 +113,14 @@ class MyFrame(wx.Frame):
     def on_start_stop_button_click(self, event):
         selected_index = self.list_ctrl.GetFirstSelected()
         if selected_index != -1:
-            item = self.data[selected_index]
-            selected_id = item['id'] #self.list_ctrl.GetItemText(selected_index)
+            item = pve.vms[selected_index]
+            selected_id = item['id']
             if item['status']=='running':
                 pve.stop_vm(selected_id)
             else:
                 print('start vm')
                 pve.start_vm(selected_id)
-            self.on_load_button_click(None)
+            self.list_vms()
             
     def on_snapshot_button_click(self, event):
         selected_index = self.list_ctrl.GetFirstSelected()
@@ -135,7 +132,7 @@ class MyFrame(wx.Frame):
                 name, desc = idg.get_input()
                 pve.snapshot(selected_id, name, desc)
             idg.Destroy()
-            self.on_load_button_click(None)
+            self.list_vms()
 
     def on_clone_button_click(self, event):
         selected_index = self.list_ctrl.GetFirstSelected()

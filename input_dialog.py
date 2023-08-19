@@ -5,12 +5,12 @@ class InputDialog(wx.Dialog):
         super(InputDialog, self).__init__(parent, title=title)
 
         self.exist_names = []
-        self.name_text = wx.TextCtrl(self, value="", size=(400, -1))
-        self.description_text = wx.TextCtrl(self, value="", style=wx.TE_MULTILINE, size=(400, 90))
+        self.name_text = wx.TextCtrl(self, value="", size=(500, -1))
+        self.description_text = wx.TextCtrl(self, value="", style=wx.TE_MULTILINE, size=(500, 90))
 
         self.list_ctrl = wx.ListCtrl(self, style=wx.LC_REPORT | wx.SUNKEN_BORDER)
-        self.list_ctrl.InsertColumn(0, 'Name')
-        self.list_ctrl.InsertColumn(1, 'Description')
+        self.list_ctrl.InsertColumn(0, 'Name', width=120)
+        self.list_ctrl.InsertColumn(1, 'Description', width=380)
 
         for item in items:
             index = self.list_ctrl.InsertItem(self.list_ctrl.GetItemCount(), item['name'])
@@ -38,7 +38,6 @@ class InputDialog(wx.Dialog):
 
     def get_input(self):
         return self.name_text.GetValue(), self.description_text.GetValue()
-
 
     def is_name_unique(self, name):
         return name not in self.exist_names

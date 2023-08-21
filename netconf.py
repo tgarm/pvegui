@@ -8,7 +8,7 @@ from network_interfaces import InterfacesFile, Auto, Allow, ValidationError
 class NetworkConfigDialog(wx.Dialog):
     def __init__(self, parent, config_data):
         super(NetworkConfigDialog, self).__init__(parent, title='Network Config')
-        self.config_data = config_data.copy()
+        self.config_data = config_data
 
         self.init_ui()
         self.SetSize(500,500)
@@ -167,9 +167,24 @@ class MainFrame(wx.Frame):
             cfg['gateway'] = vmbr.gateway
         elif vmbr.method == 'dhcp':
             cfg['ip_mode'] = 'DHCP'
-
-        #cfg['dns_servers'] = vmbr.dns_nameservers.split(' ')
+        
+        if hasattr(vmbr, 'dns_nameservers'):
+            cfg['dns_servers'] = vmbr.dns_nameservers.split(' ')
         return cfg
+
+    def save_vmbr0(self, cfg, path='/etc/network/interfaces.d/vmbr0.conf'):
+        f = InterfacesFile(path)
+
+        vmbr = f.get_iface('vmbr0')
+        if cfg['ip_mode'] == 'Static':
+            vmbr.method = 'static'
+            vmbr.address = cfg['ip_address']
+            vmbr.gateway = cfg['gateway']
+        elif cfg['ip_mode'] == 'DHCP':
+            vmbr.method = 'dhcp'
+        
+        vmbr.dns_nameservers = ' '.join(cfg['dns_servers'])
+        f.save()
 	
 
     def init_ui(self):
@@ -190,6 +205,7 @@ class MainFrame(wx.Frame):
         if result == wx.ID_OK:
             self.config_data = dlg.config_data
             print("Modified configuration data:", self.config_data)
+            self.save_vmbr0(self.config_data)
 
         dlg.Destroy()
 

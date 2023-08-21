@@ -1,0 +1,7 @@
+network-interfaces==0.1.5
+numpy==1.25.2
+pex==2.1.143
+Pillow==10.0.0
+shell==1.0.1
+six==1.16.0
+wxPython==4.2.1

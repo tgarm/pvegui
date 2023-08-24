@@ -5,13 +5,50 @@ import ipaddress
 
 from network_interfaces import InterfacesFile, Auto, Allow, ValidationError
 
+import mline
+
 class NetworkConfigDialog(wx.Dialog):
-    def __init__(self, parent, config_data):
+    def __init__(self, parent):
         super(NetworkConfigDialog, self).__init__(parent, title='Network Config')
-        self.config_data = config_data
+        self.config_data = self.load_vmbr0()
 
         self.init_ui()
         self.SetSize(500,500)
+
+    def load_vmbr0(self, path='/etc/network/interfaces.d/vmbr0.conf'):
+        f = InterfacesFile(path)
+
+        vmbr = f.get_iface('vmbr0')
+        cfg = {
+            "ip_mode": "DHCP",
+            "ip_address": "",
+            "gateway": "",
+            "dns_servers": [],
+        }
+        if vmbr.method == 'static':
+            cfg['ip_mode'] = 'Static'
+            cfg['ip_address'] = vmbr.address
+            cfg['gateway'] = vmbr.gateway
+        elif vmbr.method == 'dhcp':
+            cfg['ip_mode'] = 'DHCP'
+        
+        print(f'vmbr: {dir(vmbr)}')
+        if hasattr(vmbr, 'dns_nameservers'):
+            cfg['dns_servers'] = vmbr.dns_nameservers.split(' ')
+        return cfg
+
+    def save_vmbr0(self, cfg, path='/etc/network/interfaces.d/vmbr0.conf'):
+        f = InterfacesFile(path)
+
+        vmbr = f.get_iface('vmbr0')
+        if cfg['ip_mode'] == 'Static':
+            vmbr.method = 'static'
+            vmbr.address = cfg['ip_address']
+            vmbr.gateway = cfg['gateway']
+        elif cfg['ip_mode'] == 'DHCP':
+            vmbr.method = 'dhcp'
+        vmbr.dns_nameservers = ' '.join(cfg['dns_servers'])
+        f.save()
 
     def init_ui(self):
         modes=["DHCP", "Static"]
@@ -27,7 +64,7 @@ class NetworkConfigDialog(wx.Dialog):
         self.gateway_label = wx.StaticText(self, label="Gateway:")
         self.gateway_text = wx.TextCtrl(self, value=self.config_data['gateway'], size=textSize)
         self.dns_label = wx.StaticText(self, label="DNS Servers:")
-        self.dns_text = wx.TextCtrl(self, size=textSize)
+        self.dns_text = mline.EditableLinesWidget(self, num_lines=2, lines=self.config_data['dns_servers'])
 
         self.save_button = wx.Button(self, label="Save Configuration")
         self.save_button.Bind(wx.EVT_BUTTON, self.on_save)
@@ -60,13 +97,10 @@ class NetworkConfigDialog(wx.Dialog):
         row += 1
         input_grid.Add((10, 10), pos=(row, 0))  # Empty spacer
         input_grid.Add(self.dns_label, pos=(row, 1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
-        input_grid.Add(self.dns_text, pos=(row, 2))
-        
-        row += 1
-        input_grid.Add((10, 10), pos=(row, 0))  # Empty spacer
-        input_grid.Add(self.save_button, pos=(row, 2), flag=wx.ALIGN_CENTER_VERTICAL)
+        input_grid.Add(self.dns_text, pos=(row, 2), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
         
         self.layout.Add(input_grid, flag=wx.ALIGN_CENTER)
+        self.layout.Add(self.save_button,flag=wx.ALIGN_CENTER)
         self.SetSizerAndFit(self.layout)
 
         self.update_visibility()  # Initial visibility setup
@@ -139,53 +173,15 @@ class NetworkConfigDialog(wx.Dialog):
                 "gateway": gateway,
                 "dns_servers": dns_servers.splitlines(),  # Split by lines to store multiple DNS servers
                 })
+        self.save_vmbr0(self.config_data)
         self.EndModal(wx.ID_OK)
-
 
 class MainFrame(wx.Frame):
     def __init__(self, parent, title):
         super(MainFrame, self).__init__(parent, title=title, size=(600, 600))
         
         self.panel = wx.Panel(self)
-        self.config_data = self.load_vmbr0()
-        print(f'cfg={self.config_data}')
         self.init_ui()
-
-    def load_vmbr0(self, path='/etc/network/interfaces.d/vmbr0.conf'):
-        f = InterfacesFile(path)
-
-        vmbr = f.get_iface('vmbr0')
-        cfg = {
-            "ip_mode": "DHCP",
-            "ip_address": "",
-            "gateway": "",
-            "dns_servers": [],
-        }
-        if vmbr.method == 'static':
-            cfg['ip_mode'] = 'Static'
-            cfg['ip_address'] = vmbr.address
-            cfg['gateway'] = vmbr.gateway
-        elif vmbr.method == 'dhcp':
-            cfg['ip_mode'] = 'DHCP'
-        
-        if hasattr(vmbr, 'dns_nameservers'):
-            cfg['dns_servers'] = vmbr.dns_nameservers.split(' ')
-        return cfg
-
-    def save_vmbr0(self, cfg, path='/etc/network/interfaces.d/vmbr0.conf'):
-        f = InterfacesFile(path)
-
-        vmbr = f.get_iface('vmbr0')
-        if cfg['ip_mode'] == 'Static':
-            vmbr.method = 'static'
-            vmbr.address = cfg['ip_address']
-            vmbr.gateway = cfg['gateway']
-        elif cfg['ip_mode'] == 'DHCP':
-            vmbr.method = 'dhcp'
-        
-        vmbr.dns_nameservers = ' '.join(cfg['dns_servers'])
-        f.save()
-	
 
     def init_ui(self):
         self.config_button = wx.Button(self.panel, label="Configure Network")
@@ -199,13 +195,8 @@ class MainFrame(wx.Frame):
         self.Center()
 
     def show_config_dialog(self, event):
-        dlg = NetworkConfigDialog(self, self.config_data.copy())
+        dlg = NetworkConfigDialog(self)
         result = dlg.ShowModal()
-
-        if result == wx.ID_OK:
-            self.config_data = dlg.config_data
-            print("Modified configuration data:", self.config_data)
-            self.save_vmbr0(self.config_data)
 
         dlg.Destroy()
 

@@ -4,6 +4,7 @@ import wx
 from input_dialog import InputDialog
 
 import libpve
+import netconf
 
 pve = libpve.LibPVE()
 
@@ -35,12 +36,16 @@ class MyFrame(wx.Frame):
         load_button = wx.Button(self.panel, label='Reload')
         load_button.Bind(wx.EVT_BUTTON, self.on_load_button_click)
 
+        ip_button = wx.Button(self.panel, label='IP Settings')
+        ip_button.Bind(wx.EVT_BUTTON, self.on_ip_button_click)
+
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
         button_sizer.Add(self.start_stop_button, flag=wx.ALL, border=5)
         button_sizer.Add(self.snapshot_button, flag=wx.ALL, border=5)
         button_sizer.Add(self.clone_button, flag=wx.ALL, border=5)
 
         self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.main_sizer.Add(ip_button, 0, wx.ALIGN_RIGHT | wx.ALL, 10)
         self.main_sizer.Add(self.list_ctrl, proportion=1, flag=wx.EXPAND | wx.ALL, border=5)
         self.main_sizer.Add(load_button, flag=wx.ALIGN_CENTER | wx.ALL, border=5)
         self.main_sizer.Add(button_sizer, flag=wx.ALIGN_CENTER_HORIZONTAL | wx.ALL, border=5)
@@ -86,6 +91,12 @@ class MyFrame(wx.Frame):
                 self.list_ctrl.SetItem(index, 4, '-')
 
         self.main_sizer.Layout()
+
+    def on_ip_button_click(self, event):
+        dlg = netconf.NetworkConfigDialog(self)
+        result = dlg.ShowModal()
+
+        dlg.Destroy()
 
     def on_load_button_click(self, event):
         self.list_vms()

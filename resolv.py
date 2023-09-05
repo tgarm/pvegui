@@ -1,5 +1,5 @@
 def parse_resolv_conf(file_path):
-    resolv_dict = {}
+    resolv_dict = {'nameserver':[]}
     with open(file_path, 'r') as file:
         for line in file:
             parts = line.strip().split()

@@ -36,6 +36,7 @@ class NetworkConfigDialog(wx.Dialog):
         print(f'vmbr: {dir(vmbr)}')
         self.resolv = resolv.parse_resolv_conf('/etc/resolv.conf')
         if self.resolv.get('nameserver')!=None:
+            print(f'dns_server={self.resolv["nameserver"]}')
             cfg['dns_servers'] = self.resolv['nameserver']
         return cfg
 
@@ -59,7 +60,12 @@ class NetworkConfigDialog(wx.Dialog):
         self.ip_choice = wx.Choice(self, choices=modes)
         self.ip_choice.Bind(wx.EVT_CHOICE, self.on_ip_choice)
         self.ip_choice.SetSelection(modes.index(self.config_data['ip_mode']))
-        ip_address, netmask = self.parse_ip_and_netmask(self.config_data['ip_address'])
+        if self.config_data['ip_mode']!='DHCP':
+            ip_address, netmask = self.parse_ip_and_netmask(self.config_data['ip_address'])
+        else:
+            ip_address = '192.168.1.1'
+            netmask = '255.255.255.0'
+
         self.ip_address_label = wx.StaticText(self, label="IP Address:")
         self.ip_address_text = wx.TextCtrl(self, value=str(ip_address), size=textSize)
         self.netmask_label = wx.StaticText(self, label="Netmask:")
@@ -136,6 +142,7 @@ class NetworkConfigDialog(wx.Dialog):
         else:
             raise ValueError("Invalid input format")
 
+        print(f'ipstr:{ip_str}')
         ip = ipaddress.ip_address(ip_str)
 
         if netmask is not None:

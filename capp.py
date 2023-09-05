@@ -5,6 +5,7 @@ from input_dialog import InputDialog
 
 import libpve
 import netconf
+import snapshot
 
 pve = libpve.LibPVE()
 
@@ -25,7 +26,7 @@ class MyFrame(wx.Frame):
         self.start_stop_button.Disable()
         self.start_stop_button.Bind(wx.EVT_BUTTON, self.on_start_stop_button_click)
 
-        self.snapshot_button = wx.Button(self.panel, label='Snapshot')
+        self.snapshot_button = wx.Button(self.panel, label='Make Snapshot')
         self.snapshot_button.Disable()
         self.snapshot_button.Bind(wx.EVT_BUTTON, self.on_snapshot_button_click)
 

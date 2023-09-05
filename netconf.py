@@ -5,6 +5,7 @@ import ipaddress
 
 from network_interfaces import InterfacesFile, Auto, Allow, ValidationError
 
+import resolv
 import mline
 
 class NetworkConfigDialog(wx.Dialog):
@@ -15,7 +16,7 @@ class NetworkConfigDialog(wx.Dialog):
         self.init_ui()
         self.SetSize(500,500)
 
-    def load_vmbr0(self, path='/etc/network/interfaces.d/vmbr0.conf'):
+    def load_vmbr0(self, path='/etc/network/interfaces'):
         f = InterfacesFile(path)
 
         vmbr = f.get_iface('vmbr0')
@@ -33,11 +34,12 @@ class NetworkConfigDialog(wx.Dialog):
             cfg['ip_mode'] = 'DHCP'
         
         print(f'vmbr: {dir(vmbr)}')
-        if hasattr(vmbr, 'dns_nameservers'):
-            cfg['dns_servers'] = vmbr.dns_nameservers.split(' ')
+        self.resolv = resolv.parse_resolv_conf('/etc/resolv.conf')
+        if self.resolv.get('nameserver')!=None:
+            cfg['dns_servers'] = self.resolv['nameserver']
         return cfg
 
-    def save_vmbr0(self, cfg, path='/etc/network/interfaces.d/vmbr0.conf'):
+    def save_vmbr0(self, cfg, path='/etc/network/interfaces'):
         f = InterfacesFile(path)
 
         vmbr = f.get_iface('vmbr0')
@@ -47,8 +49,9 @@ class NetworkConfigDialog(wx.Dialog):
             vmbr.gateway = cfg['gateway']
         elif cfg['ip_mode'] == 'DHCP':
             vmbr.method = 'dhcp'
-        vmbr.dns_nameservers = ' '.join(cfg['dns_servers'])
         f.save()
+        self.resolv['nameserver'] = cfg['dns_servers']
+        resolv.write_resolv_conf(self.resolv)
 
     def init_ui(self):
         modes=["DHCP", "Static"]
@@ -165,13 +168,13 @@ class NetworkConfigDialog(wx.Dialog):
 
         netmask = self.netmask_text.GetValue()
         gateway = self.gateway_text.GetValue()
-        dns_servers = self.dns_text.GetValue()
+        dns_servers = self.dns_text.get_lines()
 
         self.config_data.update({
                 "ip_mode": ip_mode,
                 "ip_address": self.combine_ip_and_netmask(ip_address, netmask),
                 "gateway": gateway,
-                "dns_servers": dns_servers.splitlines(),  # Split by lines to store multiple DNS servers
+                "dns_servers": dns_servers
                 })
         self.save_vmbr0(self.config_data)
         self.EndModal(wx.ID_OK)

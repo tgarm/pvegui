@@ -1,3 +1,10 @@
+limits:
+  - disk_usage: 70
+snapshot:
+  - interval_hours: 10
+  - vms:
+    
+
 tasks:
   - name: TaskName1
     directory:

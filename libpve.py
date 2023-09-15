@@ -36,6 +36,7 @@ class LibPVE():
         self.snaps[id] = []
         for line in res:
             items = re.split('\s+', line.strip(), maxsplit=4)
+            print(f' list snap: {items}')
             if len(items)==5 and len(items[2])==10:
                 self.snaps[id].append({
                     'name': items[1],

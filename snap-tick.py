@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import yaml
 import subprocess
 
@@ -5,23 +7,13 @@ from datetime import datetime
 
 def hours_from_time(time_str):
     try:
-        # Parse the input time string into a datetime object
         input_time = datetime.strptime(time_str, '%Y-%m-%d %H:%M:%S')
-        
-        # Get the current time as a datetime object
         current_time = datetime.now()
-        
-        # Calculate the time difference in hours
-        time_difference = input_time - current_time
-        
-        # Extract the total number of hours from the time difference
+        time_difference = current_time - input_time 
         hours = time_difference.total_seconds() / 3600  # 3600 seconds in an hour
-        
         return int(hours)
     except ValueError:
-        # Handle invalid time format
         return None
-
 
 def space_limit_hit(config):
     threshold = config['limits']['space_threshold']
@@ -56,6 +48,17 @@ def delete_old_snap():
             name = vmids[old_snap][vmid]
             print(f'sudo qm delsnapshot {vmid} {name}')
 
+def newest_snap_idx(vmid):
+    lines = subprocess.check_output("sudo lvdisplay -C|grep  -i 'sched-'|awk '{print $1}'", shell=True, universal_newlines=True).split('\n')
+    idx = 0
+    for line in lines:
+        fields = line.split('-')
+        if len(fields)>1:
+            snap_id = int(fields[-1])
+            if vmid == fields[1]:
+                if idx < snap_id:
+                    idx = snap_id
+    return idx
 
 def load_cfg():
     config_file = 'dump.yaml'
@@ -70,8 +73,10 @@ def schedule_shall_run(hours_cnt, interval, schedule):
         return True
     return False
 
+def make_snapshot(vmid, idx):
+    print(f'sudo qm snapshot {vmid} sched-{idx}')
+
 def main():
-    delete_old_snap()
     config = load_cfg()
     while space_limit_hit(config):
         delete_oldest_snap()
@@ -80,8 +85,11 @@ def main():
     if hours_count is not None:
         interval = config['schedules']['interval']
         for vm in config['schedules']['vms']:
-            print(f'vm={vm}')
-
-
+            exact = hours_count % vm['interval']
+            if exact == 0:
+                idx = newest_snap_idx(vm['vmid'])
+                print(f'hours: {hours_count}, idx: {idx}')
+                if idx < hours_count:
+                    make_snapshot(vm['vmid'], hours_count)
 
 main()

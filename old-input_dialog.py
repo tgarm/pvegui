@@ -5,16 +5,19 @@ class InputDialog(wx.Dialog):
         super(InputDialog, self).__init__(parent, title=title)
 
         self.exist_names = []
-        self.name_text = wx.TextCtrl(self, value="", size=(500, -1))
+        self.name_text = wx.TextCtrl(self, value="", size=(540, -1))
         self.description_text = wx.TextCtrl(self, value="", style=wx.TE_MULTILINE, size=(500, 90))
 
         self.list_ctrl = wx.ListCtrl(self, style=wx.LC_REPORT | wx.SUNKEN_BORDER)
-        self.list_ctrl.InsertColumn(0, 'Name', width=120)
-        self.list_ctrl.InsertColumn(1, 'Description', width=380)
+        self.list_ctrl.InsertColumn(0, 'Name', width=135)
+        self.list_ctrl.InsertColumn(1, 'Description', width=265)
+        self.list_ctrl.InsertColumn(2, 'Created', width=140)
 
         for item in items:
+            print(item)
             index = self.list_ctrl.InsertItem(self.list_ctrl.GetItemCount(), item['name'])
             self.list_ctrl.SetItem(index, 1, item['desc'])
+            self.list_ctrl.SetItem(index, 2, item['time'].strftime('%Y-%m-%d %H:%M'))
             self.exist_names.append(item['name'])
 
         self.ok_button = wx.Button(self, wx.ID_OK, "OK")

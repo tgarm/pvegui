@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 import wx
 
-from input_dialog import InputDialog
+from snapshot_dialog import SnapshotDialog
 
 import libpve
 import netconf
 import snapshot
+import config 
 
+cfg = config.ConfigManager('dump.yaml')
 pve = libpve.LibPVE()
 
 class MyFrame(wx.Frame):
@@ -26,7 +28,7 @@ class MyFrame(wx.Frame):
         self.start_stop_button.Disable()
         self.start_stop_button.Bind(wx.EVT_BUTTON, self.on_start_stop_button_click)
 
-        self.snapshot_button = wx.Button(self.panel, label='Make Snapshot')
+        self.snapshot_button = wx.Button(self.panel, label='Snapshot')
         self.snapshot_button.Disable()
         self.snapshot_button.Bind(wx.EVT_BUTTON, self.on_snapshot_button_click)
 
@@ -57,6 +59,7 @@ class MyFrame(wx.Frame):
 
         self.list_ctrl.Bind(wx.EVT_LIST_ITEM_SELECTED, self.on_item_selected)
         self.list_ctrl.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.on_item_deselected)
+        self.list_vms()
 
     def create_menu_bar(self):
         menu_bar = wx.MenuBar()
@@ -109,12 +112,11 @@ class MyFrame(wx.Frame):
             status = item['status']
             self.start_stop_button.Enable()
             self.clone_button.Enable()
+            self.snapshot_button.Enable()
             if status == 'running':
                 self.start_stop_button.SetLabel('Stop')
-                self.snapshot_button.Disable()
             else:
                 self.start_stop_button.SetLabel('Start')
-                self.snapshot_button.Enable()
 
     def on_item_deselected(self, event):
         self.start_stop_button.SetLabel('Start/Stop')
@@ -137,12 +139,12 @@ class MyFrame(wx.Frame):
     def on_snapshot_button_click(self, event):
         selected_index = self.list_ctrl.GetFirstSelected()
         if selected_index != -1:
-            selected_id = self.list_ctrl.GetItemText(selected_index)
-            pve.list_snapshots(selected_id)
-            idg = InputDialog(self, title=f'Create Snapshot for VM {selected_id}', items=pve.snaps[selected_id])
+            vm_id = self.list_ctrl.GetItemText(selected_index)
+            pve.list_snapshots(vm_id)
+            interval = cfg.get_snap_interval(vm_id)
+            idg = SnapshotDialog(self, vm_id, interval, items=pve.snaps[vm_id])
             if idg.ShowModal() == wx.ID_OK:
-                name, desc = idg.get_input()
-                pve.snapshot(selected_id, name, desc)
+                cfg.set_snap_interval(vm_id, idg.get_interval())
             idg.Destroy()
             self.list_vms()
 
@@ -159,6 +161,7 @@ class MyFrame(wx.Frame):
         wx.MessageBox("PVE Simple GUI\n\nCreated by DCZJ/BT", "About", wx.OK | wx.ICON_INFORMATION)
 
 if __name__ == '__main__':
+    cfg.load_config()
     app = wx.App()
     frame = MyFrame(None, title='ListView Example')
     frame.Show()

@@ -1,9 +1,0 @@
-tasks:
-  - name: TaskName1
-    directory:
-    max_disk_space: 1GB
-    command: echo "Task 1 executed at tick {cnt}"
-    interval: 5
-  - name: TaskName2
-    command: echo "Task 2 executed at tick {cnt}"
-    interval: 3

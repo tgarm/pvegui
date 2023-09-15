@@ -1,10 +1,10 @@
-start_time: "2023-09-12 12:30:00"
 limits:
   space_threshold: 70
 schedules:
   interval: 24
   vms:
-  - interval: 8
+  - interval: 10
     vmid: 201
   - interval: 4
     vmid: 202
+start_time: '2023-09-12 12:30:00'

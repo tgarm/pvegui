@@ -1,9 +1,37 @@
 #!/usr/bin/env python3
 
+import os
 import yaml
 import subprocess
 
+import libpve
+
 from datetime import datetime
+
+pve = libpve.LibPVE()
+
+def load_yaml_config(yaml_filename, app_name):
+    # Initialize search directories
+    search_directories = [
+        os.path.expanduser("~"),
+        os.path.join(os.path.expanduser("~"), '.config'),
+        os.path.join(os.path.expanduser("~"), '.config', app_name),
+        os.getcwd(),
+        os.path.dirname(os.path.abspath(__file__))
+    ]
+
+    for directory in search_directories:
+        file_path = os.path.join(directory, yaml_filename)
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as yaml_file:
+                try:
+                    config = yaml.safe_load(yaml_file)
+                    return config
+                except yaml.YAMLError as e:
+                    raise ValueError(f"Error parsing YAML file '{yaml_filename}' in {directory}: {e}")
+
+    raise FileNotFoundError(f"YAML file '{yaml_filename}' not found in the expected locations.")
+
 
 def hours_from_time(time_str):
     try:
@@ -60,12 +88,6 @@ def newest_snap_idx(vmid):
                     idx = snap_id
     return idx
 
-def load_cfg():
-    config_file = 'dump.yaml'
-    with open(config_file, 'r') as yaml_file:
-        config = yaml.safe_load(yaml_file)
-        return config
-
 def schedule_shall_run(hours_cnt, interval, schedule):
     if 'interval' in schedule:
         interval = schedule['interval']
@@ -74,10 +96,10 @@ def schedule_shall_run(hours_cnt, interval, schedule):
     return False
 
 def make_snapshot(vmid, idx):
-    print(f'sudo qm snapshot {vmid} sched-{idx}')
+    pve.snapshot(vmid, f'sched-{idx}', f'auto snapshot for {vmid}', reload=False)
 
 def main():
-    config = load_cfg()
+    config = load_yaml_config('dump.yaml', 'pvegui')
     while space_limit_hit(config):
         delete_oldest_snap()
     time_str = config['start_time']
@@ -85,10 +107,11 @@ def main():
     if hours_count is not None:
         interval = config['schedules']['interval']
         for vm in config['schedules']['vms']:
+            vmid = vm['vmid']
             exact = hours_count % vm['interval']
             if exact == 0:
-                idx = newest_snap_idx(vm['vmid'])
-                print(f'hours: {hours_count}, idx: {idx}')
+                idx = newest_snap_idx(vmid)
+                print(f'vm: {vmid} hours: {hours_count}, idx: {idx}')
                 if idx < hours_count:
                     make_snapshot(vm['vmid'], hours_count)
 

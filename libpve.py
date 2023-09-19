@@ -48,9 +48,10 @@ class LibPVE():
             else:
                 print(f'unknown snapshot item: {items}')
 
-    def snapshot(self, id, name, desc='nothing'):
+    def snapshot(self, id, name, desc='nothing', reload=True):
         res = shell(f'sudo qm snapshot {id} "{name}" -description "{desc}"').output()
-        self.list_snapshots(id)
+        if reload:
+            self.list_snapshots(id)
         return res
 
 

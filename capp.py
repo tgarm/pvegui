@@ -2,6 +2,7 @@
 import wx
 
 from snapshot_dialog import SnapshotDialog
+from shell import shell
 
 import libpve
 import netconf
@@ -14,6 +15,8 @@ pve = libpve.LibPVE()
 class MyFrame(wx.Frame):
     def __init__(self, parent, title):
         super(MyFrame, self).__init__(parent, title=title, size=(600, 400))
+
+        self.connecting = False
 
         self.panel = wx.Panel(self)
 
@@ -36,6 +39,10 @@ class MyFrame(wx.Frame):
         self.clone_button.Disable()
         self.clone_button.Bind(wx.EVT_BUTTON, self.on_clone_button_click)
 
+        self.connect_button = wx.Button(self.panel, label='Connect')
+        self.connect_button.Disable()
+        self.connect_button.Bind(wx.EVT_BUTTON, self.on_connect_button_click)
+
         load_button = wx.Button(self.panel, label='Reload')
         load_button.Bind(wx.EVT_BUTTON, self.on_load_button_click)
 
@@ -46,6 +53,7 @@ class MyFrame(wx.Frame):
         button_sizer.Add(self.start_stop_button, flag=wx.ALL, border=5)
         button_sizer.Add(self.snapshot_button, flag=wx.ALL, border=5)
         button_sizer.Add(self.clone_button, flag=wx.ALL, border=5)
+        button_sizer.Add(self.connect_button, flag=wx.ALL, border=5)
 
         self.main_sizer = wx.BoxSizer(wx.VERTICAL)
         self.main_sizer.Add(ip_button, 0, wx.ALIGN_RIGHT | wx.ALL, 10)
@@ -118,6 +126,11 @@ class MyFrame(wx.Frame):
             else:
                 self.start_stop_button.SetLabel('Start')
 
+            if status == 'running' and self.connecting == False:
+                self.connect_button.Enable()
+            else:
+                self.connect_button.Disable()
+
     def on_item_deselected(self, event):
         self.start_stop_button.SetLabel('Start/Stop')
         self.start_stop_button.Disable()
@@ -153,6 +166,16 @@ class MyFrame(wx.Frame):
         if selected_index != -1:
             selected_id = self.list_ctrl.GetItemText(selected_index)
             wx.MessageBox(f"Clone clicked for item with ID: {selected_id}", "Clone Button Clicked")
+
+    def on_connect_button_click(self, event):
+        selected_index = self.list_ctrl.GetFirstSelected()
+        if selected_index != -1:
+            vmid = int(self.list_ctrl.GetItemText(selected_index))
+            remote_port = 60900 + vmid
+            self.conencting = True
+            res = shell(f'remote-viewer spice://127.0.0.1:{remote_port}').output()
+            self.connecting = False
+            self.list_vms()
 
     def on_exit(self, event):
         self.Close()
